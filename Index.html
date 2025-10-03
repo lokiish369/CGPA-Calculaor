@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CGPA Calculator</title>
+    <style>
+        /* ---------- Layout & Background ---------- */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 30px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #FFE5B4, #FFD194); /* soft orange gradient */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: #FFFFFF;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ---------- Headings & Groups ---------- */
+        h1 {
+            text-align: center;
+            color: #FF7A29;
+            margin-bottom: 18px;
+        }
+
+        .input-group {
+            margin: 14px 0;
+        }
+
+        /* ---------- Semester Card ---------- */
+        .semester {
+            margin: 20px 0;
+            padding: 18px;
+            background: linear-gradient(135deg, #FFF5E1, #FFECD1);
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .semester:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.12);
+        }
+
+        /* ---------- Course Row ---------- */
+        .course-row {
+            display: flex;
+            gap: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* inputs */
+        input[type="text"], input[type="number"], select {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #F5F5F5;
+            flex: 1;
+            min-width: 120px;
+            transition: all 0.25s ease;
+        }
+        input[type="text"]::placeholder { color: #A9A9A9; }
+
+        input:focus, select:focus {
+            outline: none;
+            background: #FFFFFF;
+            box-shadow: 0 0 6px rgba(255,122,41,0.5);
+        }
+
+        /* ---------- Buttons ---------- */
+        .feature-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 18px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #FF8C42, #FF6B35);
+            color: white;
+            padding: 12px 26px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 4px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            transition: all 0.25s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #FF9B57, #FF7A29);
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 10px 22px rgba(255,107,53,0.22);
+        }
+
+        /* ---------- Results ---------- */
+        #results {
+            margin-top: 20px;
+            padding: 18px;
+            background: linear-gradient(135deg, #FFF3E0, #FFE8CC);
+            border-radius: 12px;
+            display: none;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        }
+
+        #results h3 { margin-top: 0; }
+
+        /* ---------- Footer (placed just below container) ---------- */
+        footer {
+            margin-top: 20px; /* ensures footer sits right after the container */
+            text-align: center;
+            color: #4A4A4A;
+            font-size: 0.95em;
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 700px) {
+            .course-row { flex-direction: column; }
+            .container { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CGPA Calculator</h1>
+
+        <div class="input-group">
+            <label>Number of Semesters :</label>
+            <input type="number" id="numSemesters" min="1" max="10" placeholder="Enter number of semesters">
+        </div>
+
+        <div id="semestersContainer"></div>
+
+        <div class="feature-buttons">
+            <button id="calculateBtn">Calculate CGPA</button>
+            <button id="resetBtn">Reset</button>
+            <button id="downloadBtn">Download Results</button>
+        </div>
+
+        <div id="results"></div>
+    </div> <!-- end .container -->
+
+    <footer>© Lokesh, IIT Hyderabad</footer>
+
+    <script>
+        const gradePoints = {
+            "A+": 10,
+            "A": 10,
+            "A-": 9,
+            "B": 8,
+            "B-": 7,
+            "C": 6,
+            "C-": 5,
+            "D": 4,
+            "F": 0
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('numSemesters').addEventListener('input', updateSemesters);
+            document.getElementById('calculateBtn').addEventListener('click', calculateCGPA);
+            document.getElementById('resetBtn').addEventListener('click', resetForm);
+            document.getElementById('downloadBtn').addEventListener('click', downloadResults);
+        });
+
+        function updateSemesters() {
+            const num = Math.min(parseInt(document.getElementById('numSemesters').value) || 0, 10);
+            const container = document.getElementById('semestersContainer');
+            const existing = container.querySelectorAll('.semester');
+            const current = existing.length;
+
+            // remove extra semesters
+            if (current > num) {
+                for (let i = current - 1; i >= num; i--) container.removeChild(existing[i]);
+            }
+
+            // add new semesters
+            for (let i = 0; i < num; i++) {
+                if (i < current) continue;
+                const sem = document.createElement('div');
+                sem.className = 'semester';
+                sem.setAttribute('data-semester', i);
+                sem.innerHTML = `
+                    <h3>Semester ${i + 1}</h3>
+                    <div class="input-group">
+                        <label>Number of Courses:</label>
+                        <input type="number" class="numCourses" min="1" placeholder="Enter number of courses">
+                    </div>
+                    <div class="coursesContainer" id="coursesContainer${i}"></div>
+                `;
+                container.appendChild(sem);
+                sem.querySelector('.numCourses').addEventListener('input', () => updateCourses(i));
+            }
+        }
+
+        function updateCourses(semesterIndex) {
+            const semester = document.querySelector(`.semester[data-semester="${semesterIndex}"]`);
+            const numCourses = parseInt(semester.querySelector('.numCourses').value) || 0;
+            const container = semester.querySelector('.coursesContainer');
+            const existing = container.querySelectorAll('.course-row');
+            const current = existing.length;
+
+            // preserve existing values
+            const courseData = [];
+            existing.forEach(row => {
+                courseData.push({
+                    name: row.querySelector('.courseName') ? row.querySelector('.courseName').value : '',
+                    credits: row.querySelector('.credits') ? row.querySelector('.credits').value : '',
+                    grade: row.querySelector('.grade') ? row.querySelector('.grade').value : ''
+                });
+            });
+
+            // remove extras
+            if (current > numCourses) {
+                for (let i = current - 1; i >= numCourses; i--) container.removeChild(existing[i]);
+            }
+
+            // add missing
+            for (let i = current; i < numCourses; i++) {
+                const row = document.createElement('div');
+                row.className = 'course-row';
+                row.innerHTML = `
+                    <input type="text" class="courseName" placeholder="Course Name (optional)">
+                    <input type="number" class="credits" min="1" placeholder="Credits">
+                    <select class="grade">
+                        <option value="">Select Grade</option>
+                        ${Object.keys(gradePoints).map(g => `<option value="${g}">${g} (${gradePoints[g]})</option>`).join('')}
+                    </select>
+                `;
+                container.appendChild(row);
+            }
+
+            // reapply preserved values
+            const newRows = container.querySelectorAll('.course-row');
+            newRows.forEach((row, idx) => {
+                if (idx < courseData.length) {
+                    if (courseData[idx].name) row.querySelector('.courseName').value = courseData[idx].name;
+                    if (courseData[idx].credits) row.querySelector('.credits').value = courseData[idx].credits;
+                    if (courseData[idx].grade) row.querySelector('.grade').value = courseData[idx].grade;
+                }
+            });
+        }
+
+        function calculateCGPA() {
+            const semesters = document.querySelectorAll('.semester');
+            if (semesters.length === 0) {
+                alert('Please enter the number of semesters.');
+                return;
+            }
+
+            let totalCredits = 0;
+            let totalGradePoints = 0;
+            const sgpas = [];
+            const courseDetails = [];
+
+            for (let i = 0; i < semesters.length; i++) {
+                const semester = semesters[i];
+                const rows = semester.querySelectorAll('.course-row');
+                if (rows.length === 0) {
+                    alert(`Please enter the number of courses for Semester ${i + 1}.`);
+                    return;
+                }
+
+                let semCredits = 0;
+                let semGradePoints = 0;
+                const semDetails = [];
+
+                for (const row of rows) {
+                    const name = row.querySelector('.courseName').value || '';
+                    const credits = parseInt(row.querySelector('.credits').value) || 0;
+                    const grade = row.querySelector('.grade').value;
+
+                    if (!credits) {
+                        alert(`Please enter credits for a course in Semester ${i + 1}.`);
+                        return;
+                    }
+                    if (!grade) {
+                        alert(`Please select a grade for a course in Semester ${i + 1}.`);
+                        return;
+                    }
+
+                    const gp = gradePoints[grade];
+                    semCredits += credits;
+                    semGradePoints += credits * gp;
+                    semDetails.push({ name, credits, grade });
+                }
+
+                const sgpa = semCredits > 0 ? (semGradePoints / semCredits).toFixed(2) : '0.00';
+                sgpas.push(sgpa);
+                totalCredits += semCredits;
+                totalGradePoints += semGradePoints;
+                courseDetails.push({ semester: i + 1, details: semDetails, sgpa });
+            }
+
+            const cgpa = totalCredits > 0 ? (totalGradePoints / totalCredits).toFixed(2) : '0.00';
+            displayResults(sgpas, cgpa, courseDetails);
+            return { sgpas, cgpa, courseDetails };
+        }
+
+        function displayResults(sgpas, cgpa, courseDetails) {
+            const results = document.getElementById('results');
+            results.style.display = 'block';
+            results.innerHTML = `
+                <h3>Results</h3>
+                ${courseDetails.map(sem => `
+                    <div>
+                        <h4>Semester ${sem.semester} (SGPA: ${sem.sgpa})</h4>
+                        <ul>
+                            ${sem.details.map(course => `
+                                <li>${course.name ? course.name + ' - ' : ''}${course.credits} credits, Grade: ${course.grade} (${gradePoints[course.grade]})</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `).join('')}
+                <p><strong>Overall CGPA: ${cgpa}</strong></p>
+            `;
+        }
+
+        function resetForm() {
+            document.getElementById('numSemesters').value = '';
+            document.getElementById('semestersContainer').innerHTML = '';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        function downloadResults() {
+            const results = calculateCGPA();
+            if (!results) return;
+
+            const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CGPA Results</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #FFF5E1; color: #333; }
+    .container { max-width: 900px; margin: 0 auto; background: #FFF; padding: 20px; border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.15); }
+    h1 { text-align: center; color: #FF6B35; margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { padding: 10px; border: 1px solid #DDD; text-align: left; }
+    th { background: linear-gradient(135deg, #FF8C42, #FF6B35); color: #fff; }
+    tr:nth-child(even) { background: #FAFAFA; }
+    .cgpa { text-align: center; font-weight: bold; font-size: 1.15em; margin: 14px 0; color: #FF6B35; }
+    .footer { text-align: center; color: #666; font-size: 0.9em; margin-top: 10px; }
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>CGPA Calculation Results</h1>
+        ${results.courseDetails.map(sem => `
+            <h2>Semester ${sem.semester} (SGPA: ${sem.sgpa})</h2>
+            <table>
+                <tr><th>Course</th><th>Credits</th><th>Grade</th></tr>
+                ${sem.details.map(c => `
+                    <tr>
+                        <td>${c.name || '-'}</td>
+                        <td>${c.credits}</td>
+                        <td>${c.grade} (${gradePoints[c.grade]})</td>
+                    </tr>
+                `).join('')}
+            </table>
+        `).join('')}
+        <p class="cgpa">Overall CGPA: ${results.cgpa}</p>
+        <p class="footer">Generated on: ${new Date().toLocaleString()} | © Lokesh, IIT Hyderabad</p>
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'cgpa_results.html';
+            link.click();
+        }
+    </script>
+</body>
+</html>
